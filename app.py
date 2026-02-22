@@ -1,5 +1,6 @@
 from flask import Flask, render_template_string, session, redirect, url_for, request, jsonify
 import json
+import os
 import secrets
 import base64
 from pathlib import Path
@@ -35,7 +36,8 @@ def _get_rp_id():
 
 def _get_origin():
     """Derive the expected origin from the request."""
-    return f"https://{request.host}"
+    scheme = request.headers.get("X-Forwarded-Proto", request.scheme)
+    return f"{scheme}://{request.host}"
 
 # Persist secret key so sessions survive restarts
 _secret_key_file = Path(__file__).parent / ".secret_key"
@@ -1242,12 +1244,12 @@ startQuiz();
 """
 
 if __name__ == "__main__":
+    cert = Path(__file__).parent / "cert.pem"
+    key = Path(__file__).parent / "key.pem"
+    ssl_ctx = (cert, key) if cert.exists() and key.exists() else None
     app.run(
         debug=True,
         host="0.0.0.0",
-        port=5050,
-        ssl_context=(
-            Path(__file__).parent / "cert.pem",
-            Path(__file__).parent / "key.pem",
-        ),
+        port=int(os.environ.get("PORT", 5050)),
+        ssl_context=ssl_ctx,
     )
