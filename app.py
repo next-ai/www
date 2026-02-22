@@ -407,7 +407,7 @@ def robots():
 
 
 from flags import flags_bp
-from tictactoe import tictactoe_bp
+from miami_sky import miami_sky_bp
 
 
 LANDING_TEMPLATE = r"""
@@ -485,11 +485,11 @@ LANDING_TEMPLATE = r"""
         <div class="desc">Learn the flags of the world</div>
       </div>
     </a>
-    <a href="/tictactoe" class="app-card">
-      <span class="icon">&#10060;</span>
+    <a href="/miami-sky" class="app-card">
+      <span class="icon">&#127749;</span>
       <div class="info">
-        <div class="name">Tic-Tac-Toe</div>
-        <div class="desc">Play against an unbeatable AI</div>
+        <div class="name">Miami Sky</div>
+        <div class="desc">Sunset countdown &amp; moon tracker</div>
       </div>
     </a>
   </div>
@@ -506,7 +506,7 @@ def landing():
 
 
 app.register_blueprint(flags_bp)
-app.register_blueprint(tictactoe_bp)
+app.register_blueprint(miami_sky_bp)
 
 if __name__ == "__main__":
     cert = Path(__file__).parent / "cert.pem"
