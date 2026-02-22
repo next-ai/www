@@ -31,7 +31,9 @@ REGISTRATION_LOCK = Path(__file__).parent / ".registration_locked"
 
 def _get_rp_id():
     """Derive RP ID from the request's Host header."""
-    return request.host.split(":")[0]
+    host = request.host.split(":")[0]
+    parts = host.split(".")
+    return ".".join(parts[-2:]) if len(parts) >= 2 else host
 
 
 def _get_origin():
