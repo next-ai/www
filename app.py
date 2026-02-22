@@ -163,6 +163,7 @@ function base64urlToBuffer(base64url) {
 
 async function doRegister() {
   const btn = document.getElementById('registerBtn');
+  if (!navigator.credentials) { setStatus('This page requires HTTPS. Please access via https://' + location.host, 'error'); return; }
   btn.disabled = true;
   setStatus('Starting registration...', '');
   try {
@@ -210,6 +211,7 @@ async function doRegister() {
 
 async function doLogin() {
   const btn = document.getElementById('loginBtn');
+  if (!navigator.credentials) { setStatus('This page requires HTTPS. Please access via https://' + location.host, 'error'); return; }
   btn.disabled = true;
   setStatus('Starting authentication...', '');
   try {
