@@ -139,6 +139,11 @@ function setStatus(msg, type) {
   statusEl.className = 'status' + (type ? ' ' + type : '');
 }
 
+if (!window.isSecureContext) {
+  setStatus('This page requires HTTPS. Please access via https://' + location.host, 'error');
+  document.querySelectorAll('button').forEach(b => b.disabled = true);
+}
+
 function bufferToBase64url(buffer) {
   const bytes = new Uint8Array(buffer);
   let binary = '';
