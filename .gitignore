@@ -1,0 +1,6 @@
+.secret_key
+credentials.json
+.registration_locked
+cert.pem
+key.pem
+__pycache__/
