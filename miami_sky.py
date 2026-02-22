@@ -168,8 +168,10 @@ function moonPosition(date) {
 }
 
 function compassDirection(az) {
-  const dirs = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE',
-                'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
+  const dirs = ['North', 'North-Northeast', 'Northeast', 'East-Northeast',
+                'East', 'East-Southeast', 'Southeast', 'South-Southeast',
+                'South', 'South-Southwest', 'Southwest', 'West-Southwest',
+                'West', 'West-Northwest', 'Northwest', 'North-Northwest'];
   return dirs[Math.round(az / 22.5) % 16];
 }
 
