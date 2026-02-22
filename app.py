@@ -72,12 +72,17 @@ def _b64decode(s: str) -> bytes:
 
 
 def load_credentials() -> list:
+    env_creds = os.environ.get("CREDENTIALS")
+    if env_creds:
+        return json.loads(env_creds)
     if CREDENTIALS_FILE.exists():
         return json.loads(CREDENTIALS_FILE.read_text())
     return []
 
 
 def save_credentials(creds: list):
+    if os.environ.get("CREDENTIALS"):
+        return  # env var is read-only; ignore writes
     CREDENTIALS_FILE.write_text(json.dumps(creds, indent=2))
 
 AUTH_TEMPLATE = r"""

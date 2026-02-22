@@ -108,8 +108,8 @@ function computeSunset(date) {
   return new Date((jSet - 2440587.5) * 86400000);
 }
 
-// Moon position (altitude above horizon)
-function moonAltitude(date) {
+// Moon position (altitude and azimuth)
+function moonPosition(date) {
   const jd = toJulian(date);
   const T = (jd - 2451545.0) / 36525;
 
@@ -155,8 +155,22 @@ function moonAltitude(date) {
   const ha = lst - ra;
   const latR = toRad(LAT);
 
-  const alt = Math.asin(Math.sin(latR) * Math.sin(dec) + Math.cos(latR) * Math.cos(dec) * Math.cos(ha));
-  return toDeg(alt);
+  const sinAlt = Math.sin(latR) * Math.sin(dec) + Math.cos(latR) * Math.cos(dec) * Math.cos(ha);
+  const alt = toDeg(Math.asin(sinAlt));
+
+  // Azimuth (measured from North, clockwise)
+  const az = (toDeg(Math.atan2(
+    Math.sin(ha),
+    Math.cos(ha) * Math.sin(latR) - Math.tan(dec) * Math.cos(latR)
+  )) + 180) % 360;
+
+  return { alt, az };
+}
+
+function compassDirection(az) {
+  const dirs = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE',
+                'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
+  return dirs[Math.round(az / 22.5) % 16];
 }
 
 // Moon illumination percentage and phase name
@@ -227,14 +241,15 @@ function update() {
   }
 
   // --- Moon ---
-  const alt = moonAltitude(now);
+  const { alt, az } = moonPosition(now);
   const { illumination, name } = moonPhase(now);
   const moonEl = document.getElementById('moonValue');
   const moonDet = document.getElementById('moonDetail');
+  const dir = compassDirection(az);
 
   if (alt > 0) {
-    moonEl.textContent = "Above horizon";
-    moonDet.textContent = name + " \u2022 " + illumination + "% illuminated \u2022 " + alt.toFixed(1) + "\u00B0 alt";
+    moonEl.textContent = "Look " + dir;
+    moonDet.textContent = name + " \u2022 " + illumination + "% \u2022 " + alt.toFixed(1) + "\u00B0 above horizon";
   } else {
     moonEl.textContent = "Below horizon";
     moonDet.textContent = name + " \u2022 " + illumination + "% illuminated";
