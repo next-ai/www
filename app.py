@@ -1,4 +1,4 @@
-from flask import Flask, render_template_string, session, redirect, url_for, request, jsonify
+from flask import Flask, Blueprint, render_template_string, session, redirect, url_for, request, jsonify
 import json
 import os
 import secrets
@@ -24,7 +24,7 @@ from webauthn.helpers.structs import (
 app = Flask(__name__)
 
 # --- Configuration ---
-RP_NAME = "Flag Explorer"
+RP_NAME = "Musoyan"
 CREDENTIALS_FILE = Path(__file__).parent / "credentials.json"
 REGISTRATION_LOCK = Path(__file__).parent / ".registration_locked"
 
@@ -46,6 +46,19 @@ if _secret_key_file.exists():
 else:
     app.secret_key = secrets.token_hex(32)
     _secret_key_file.write_text(app.secret_key)
+
+
+# --- Global auth guard ---
+AUTH_EXEMPT_PREFIXES = ("/auth", "/register", "/login", "/logout", "/robots.txt")
+
+
+@app.before_request
+def require_auth():
+    if request.path.startswith(AUTH_EXEMPT_PREFIXES):
+        return None
+    if not session.get("authenticated"):
+        return redirect(url_for("auth_page"))
+    return None
 
 
 # --- Helpers ---
@@ -73,74 +86,41 @@ AUTH_TEMPLATE = r"""
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Flag Explorer - Login</title>
+<title>Login</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;700;800&display=swap');
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  :root {
-    --pink: #FF6B9D; --purple: #C44DFF; --blue: #4DA6FF;
-    --green: #4DDB7F; --yellow: #FFD93D; --orange: #FF8C42;
-    --bg: #1a1a2e; --card: #16213e;
-  }
   body {
-    font-family: 'Nunito', sans-serif;
-    background: var(--bg); color: white;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #1a1a2e; color: white;
     min-height: 100vh; display: flex;
     align-items: center; justify-content: center;
-    overflow: hidden;
   }
-  .bg-shapes { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
-  .bg-shapes span { position: absolute; display: block; border-radius: 50%; opacity: 0.07; animation: floatShape 20s infinite linear; }
-  .bg-shapes span:nth-child(1) { width: 200px; height: 200px; background: var(--pink); top: 10%; left: 5%; animation-duration: 25s; }
-  .bg-shapes span:nth-child(2) { width: 300px; height: 300px; background: var(--blue); top: 60%; left: 80%; animation-duration: 30s; animation-delay: -5s; }
-  .bg-shapes span:nth-child(3) { width: 150px; height: 150px; background: var(--yellow); top: 80%; left: 20%; animation-duration: 22s; animation-delay: -10s; }
-  .bg-shapes span:nth-child(4) { width: 250px; height: 250px; background: var(--green); top: 20%; left: 70%; animation-duration: 28s; animation-delay: -3s; }
-  @keyframes floatShape {
-    0%, 100% { transform: translate(0, 0) rotate(0deg); }
-    25% { transform: translate(30px, -40px) rotate(90deg); }
-    50% { transform: translate(-20px, 20px) rotate(180deg); }
-    75% { transform: translate(40px, 30px) rotate(270deg); }
+  .auth {
+    text-align: center; position: relative; z-index: 1;
   }
-  .auth-card {
-    background: var(--card); border-radius: 30px; padding: 50px 40px;
-    text-align: center; max-width: 440px; width: 90%;
-    border: 2px solid rgba(255,255,255,0.05); position: relative; z-index: 1;
-  }
-  .auth-card h1 {
-    font-family: 'Fredoka One', cursive; font-size: 2.5em;
-    background: linear-gradient(135deg, var(--yellow), var(--orange), var(--pink));
-    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-    background-clip: text; margin-bottom: 10px;
-  }
-  .auth-card p { color: #aaa; font-size: 1.1em; margin-bottom: 30px; }
   .auth-btn {
-    font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 1.2em;
-    padding: 16px 40px; border: none; border-radius: 50px;
-    cursor: pointer; color: white; transition: all 0.3s;
-    background: linear-gradient(135deg, var(--purple), #7B2FBE);
+    font-family: inherit; font-weight: 600; font-size: 1em;
+    padding: 14px 36px; border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 8px; cursor: pointer; color: white;
+    background: rgba(255,255,255,0.06); transition: all 0.2s;
   }
-  .auth-btn:hover { transform: translateY(-3px); box-shadow: 0 8px 25px rgba(0,0,0,0.3); }
-  .auth-btn:active { transform: translateY(0); }
-  .auth-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
-  .status { margin-top: 20px; font-size: 1em; color: #aaa; min-height: 1.5em; }
-  .status.error { color: var(--pink); }
-  .status.success { color: var(--green); }
-  .lock-icon { font-size: 4em; margin-bottom: 15px; }
+  .auth-btn:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.25); }
+  .auth-btn:active { transform: scale(0.98); }
+  .auth-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+  .status { margin-top: 16px; font-size: 0.9em; color: #888; min-height: 1.4em; }
+  .status.error { color: #e06; }
+  .status.success { color: #4d8; }
+  .denied { color: #888; font-size: 0.95em; }
 </style>
 </head>
 <body>
-<div class="bg-shapes"><span></span><span></span><span></span><span></span></div>
-<div class="auth-card">
-  <div class="lock-icon">&#128274;</div>
-  <h1>Flag Explorer</h1>
+<div class="auth">
   {% if registration_locked and not has_credentials %}
-  <p>Access denied. No passkey registered for this device.</p>
+  <p class="denied">Access denied.</p>
   {% elif has_credentials %}
-  <p>Welcome back! Authenticate to continue.</p>
-  <button class="auth-btn" id="loginBtn" onclick="doLogin()">&#128275; Login with Passkey</button>
+  <button class="auth-btn" id="loginBtn" onclick="doLogin()">Authenticate</button>
   {% else %}
-  <p>Create a passkey to get started.</p>
-  <button class="auth-btn" id="registerBtn" onclick="doRegister()">&#128273; Create Passkey</button>
+  <button class="auth-btn" id="registerBtn" onclick="doRegister()">Set up passkey</button>
   {% endif %}
   <div class="status" id="status"></div>
 </div>
@@ -304,9 +284,9 @@ def register_options():
     options = generate_registration_options(
         rp_id=rp_id,
         rp_name=RP_NAME,
-        user_id=b"flag-explorer-user",
-        user_name="explorer",
-        user_display_name="Flag Explorer User",
+        user_id=b"musoyan-user",
+        user_name="musoyan",
+        user_display_name="Musoyan",
         authenticator_selection=AuthenticatorSelectionCriteria(
             authenticator_attachment=AuthenticatorAttachment.PLATFORM,
             resident_key=ResidentKeyRequirement.PREFERRED,
@@ -420,6 +400,11 @@ def logout():
     return redirect(url_for("auth_page"))
 
 
+@app.route("/robots.txt")
+def robots():
+    return "User-agent: *\nDisallow: /\n", 200, {"Content-Type": "text/plain"}
+
+
 COUNTRIES = [
     {"name": "United States", "code": "US", "emoji": "\U0001F1FA\U0001F1F8", "fun_fact": "Has 50 stars on its flag!"},
     {"name": "China", "code": "CN", "emoji": "\U0001F1E8\U0001F1F3", "fun_fact": "Has big yellow stars!"},
@@ -446,10 +431,111 @@ COUNTRIES = [
 ]
 
 
+LANDING_TEMPLATE = r"""
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Musoyan</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;700;800&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --pink: #FF6B9D; --purple: #C44DFF; --blue: #4DA6FF;
+    --green: #4DDB7F; --yellow: #FFD93D; --orange: #FF8C42;
+    --bg: #1a1a2e; --card: #16213e;
+  }
+  body {
+    font-family: 'Nunito', sans-serif;
+    background: var(--bg); color: white;
+    min-height: 100vh; display: flex;
+    align-items: center; justify-content: center;
+    overflow: hidden;
+  }
+  .bg-shapes { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+  .bg-shapes span { position: absolute; display: block; border-radius: 50%; opacity: 0.07; animation: floatShape 20s infinite linear; }
+  .bg-shapes span:nth-child(1) { width: 200px; height: 200px; background: var(--pink); top: 10%; left: 5%; animation-duration: 25s; }
+  .bg-shapes span:nth-child(2) { width: 300px; height: 300px; background: var(--blue); top: 60%; left: 80%; animation-duration: 30s; animation-delay: -5s; }
+  .bg-shapes span:nth-child(3) { width: 150px; height: 150px; background: var(--yellow); top: 80%; left: 20%; animation-duration: 22s; animation-delay: -10s; }
+  .bg-shapes span:nth-child(4) { width: 250px; height: 250px; background: var(--green); top: 20%; left: 70%; animation-duration: 28s; animation-delay: -3s; }
+  @keyframes floatShape {
+    0%, 100% { transform: translate(0, 0) rotate(0deg); }
+    25% { transform: translate(30px, -40px) rotate(90deg); }
+    50% { transform: translate(-20px, 20px) rotate(180deg); }
+    75% { transform: translate(40px, 30px) rotate(270deg); }
+  }
+  .landing {
+    text-align: center; position: relative; z-index: 1;
+    max-width: 600px; width: 90%;
+  }
+  .landing h1 {
+    font-family: 'Fredoka One', cursive; font-size: 3.5em;
+    background: linear-gradient(135deg, var(--yellow), var(--orange), var(--pink));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text; margin-bottom: 40px;
+  }
+  .apps {
+    display: grid; gap: 18px;
+  }
+  .app-card {
+    display: flex; align-items: center; gap: 20px;
+    background: var(--card); border: 2px solid rgba(255,255,255,0.05);
+    border-radius: 20px; padding: 25px 30px;
+    text-decoration: none; color: white;
+    transition: all 0.3s;
+  }
+  .app-card:hover {
+    transform: translateY(-4px);
+    border-color: var(--purple);
+    box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+  }
+  .app-card .icon { font-size: 2.5em; }
+  .app-card .info { text-align: left; }
+  .app-card .info .name { font-weight: 800; font-size: 1.3em; }
+  .app-card .info .desc { color: #aaa; font-size: 0.95em; margin-top: 2px; }
+  .logout-btn {
+    position: fixed; top: 20px; right: 20px;
+    background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 12px; padding: 8px 16px;
+    color: #aaa; text-decoration: none;
+    font-size: 0.85em; font-weight: 700;
+    transition: all 0.2s; z-index: 2;
+  }
+  .logout-btn:hover { color: var(--pink); border-color: var(--pink); }
+</style>
+</head>
+<body>
+<div class="bg-shapes"><span></span><span></span><span></span><span></span></div>
+<a href="/logout" class="logout-btn">&#128274; Logout</a>
+<div class="landing">
+  <h1>Musoyan</h1>
+  <div class="apps">
+    <a href="/flags" class="app-card">
+      <span class="icon">&#127988;</span>
+      <div class="info">
+        <div class="name">Flag Explorer</div>
+        <div class="desc">Learn the flags of the world</div>
+      </div>
+    </a>
+  </div>
+</div>
+</body>
+</html>
+"""
+
+
 @app.route("/")
-def index():
-    if not session.get("authenticated"):
-        return redirect(url_for("auth_page"))
+def landing():
+    return render_template_string(LANDING_TEMPLATE)
+
+
+# --- Flag Explorer Blueprint ---
+flags_bp = Blueprint("flags", __name__, url_prefix="/flags")
+
+
+@flags_bp.route("/")
+def flags_index():
     return render_template_string(HTML_TEMPLATE, countries=json.dumps(COUNTRIES))
 
 
@@ -879,7 +965,10 @@ HTML_TEMPLATE = r"""
 
 <div class="container">
   <header>
-    <a href="/logout" style="position:absolute;top:20px;right:20px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:12px;padding:8px 16px;color:#aaa;text-decoration:none;font-size:0.85em;font-weight:700;transition:all 0.2s;" onmouseover="this.style.color='#FF6B9D';this.style.borderColor='#FF6B9D'" onmouseout="this.style.color='#aaa';this.style.borderColor='rgba(255,255,255,0.12)'">&#128274; Logout</a>
+    <div style="position:absolute;top:20px;right:20px;display:flex;gap:10px;">
+      <a href="/" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:12px;padding:8px 16px;color:#aaa;text-decoration:none;font-size:0.85em;font-weight:700;transition:all 0.2s;" onmouseover="this.style.color='#4DA6FF';this.style.borderColor='#4DA6FF'" onmouseout="this.style.color='#aaa';this.style.borderColor='rgba(255,255,255,0.12)'">&#127968; Home</a>
+      <a href="/logout" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:12px;padding:8px 16px;color:#aaa;text-decoration:none;font-size:0.85em;font-weight:700;transition:all 0.2s;" onmouseover="this.style.color='#FF6B9D';this.style.borderColor='#FF6B9D'" onmouseout="this.style.color='#aaa';this.style.borderColor='rgba(255,255,255,0.12)'">&#128274; Logout</a>
+    </div>
     <h1>Flag Explorer</h1>
     <p>Learn the flags of the world!</p>
   </header>
@@ -1242,6 +1331,8 @@ startQuiz();
 </body>
 </html>
 """
+
+app.register_blueprint(flags_bp)
 
 if __name__ == "__main__":
     cert = Path(__file__).parent / "cert.pem"
