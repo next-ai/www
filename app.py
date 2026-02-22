@@ -91,26 +91,27 @@ AUTH_TEMPLATE = r"""
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    background: #1a1a2e; color: white;
+    background: #f5f0eb; color: #2c2c2c;
     min-height: 100vh; display: flex;
     align-items: center; justify-content: center;
   }
-  .auth {
-    text-align: center; position: relative; z-index: 1;
-  }
+  .auth { text-align: center; }
   .auth-btn {
     font-family: inherit; font-weight: 600; font-size: 1em;
-    padding: 14px 36px; border: 1px solid rgba(255,255,255,0.15);
-    border-radius: 8px; cursor: pointer; color: white;
-    background: rgba(255,255,255,0.06); transition: all 0.2s;
+    padding: 14px 36px;
+    border: 1px solid #e8e2dc;
+    border-radius: 10px; cursor: pointer;
+    color: #2c2c2c; background: #fff;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    transition: all 0.2s;
   }
-  .auth-btn:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.25); }
+  .auth-btn:hover { border-color: #c9bfb4; box-shadow: 0 4px 16px rgba(0,0,0,0.07); }
   .auth-btn:active { transform: scale(0.98); }
   .auth-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
-  .status { margin-top: 16px; font-size: 0.9em; color: #888; min-height: 1.4em; }
-  .status.error { color: #e06; }
-  .status.success { color: #4d8; }
-  .denied { color: #888; font-size: 0.95em; }
+  .status { margin-top: 16px; font-size: 0.9em; color: #9a8f85; min-height: 1.4em; }
+  .status.error { color: #c45; }
+  .status.success { color: #5a9a6a; }
+  .denied { color: #9a8f85; font-size: 0.95em; }
 </style>
 </head>
 <body>
@@ -406,6 +407,7 @@ def robots():
 
 
 from flags import flags_bp
+from tictactoe import tictactoe_bp
 
 
 LANDING_TEMPLATE = r"""
@@ -416,77 +418,65 @@ LANDING_TEMPLATE = r"""
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Musoyan</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;700;800&display=swap');
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  :root {
-    --pink: #FF6B9D; --purple: #C44DFF; --blue: #4DA6FF;
-    --green: #4DDB7F; --yellow: #FFD93D; --orange: #FF8C42;
-    --bg: #1a1a2e; --card: #16213e;
-  }
   body {
-    font-family: 'Nunito', sans-serif;
-    background: var(--bg); color: white;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #f5f0eb; color: #2c2c2c;
     min-height: 100vh; display: flex;
     align-items: center; justify-content: center;
-    overflow: hidden;
   }
-  .bg-shapes { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
-  .bg-shapes span { position: absolute; display: block; border-radius: 50%; opacity: 0.07; animation: floatShape 20s infinite linear; }
-  .bg-shapes span:nth-child(1) { width: 200px; height: 200px; background: var(--pink); top: 10%; left: 5%; animation-duration: 25s; }
-  .bg-shapes span:nth-child(2) { width: 300px; height: 300px; background: var(--blue); top: 60%; left: 80%; animation-duration: 30s; animation-delay: -5s; }
-  .bg-shapes span:nth-child(3) { width: 150px; height: 150px; background: var(--yellow); top: 80%; left: 20%; animation-duration: 22s; animation-delay: -10s; }
-  .bg-shapes span:nth-child(4) { width: 250px; height: 250px; background: var(--green); top: 20%; left: 70%; animation-duration: 28s; animation-delay: -3s; }
-  @keyframes floatShape {
-    0%, 100% { transform: translate(0, 0) rotate(0deg); }
-    25% { transform: translate(30px, -40px) rotate(90deg); }
-    50% { transform: translate(-20px, 20px) rotate(180deg); }
-    75% { transform: translate(40px, 30px) rotate(270deg); }
-  }
-  .landing {
-    text-align: center; position: relative; z-index: 1;
-    max-width: 600px; width: 90%;
-  }
+  .landing { max-width: 460px; width: 90%; text-align: center; }
   .landing h1 {
-    font-family: 'Fredoka One', cursive; font-size: 3.5em;
-    background: linear-gradient(135deg, var(--yellow), var(--orange), var(--pink));
-    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-    background-clip: text; margin-bottom: 40px;
+    font-size: 2.2em; font-weight: 600;
+    color: #3a3a3a; margin-bottom: 12px;
   }
-  .apps {
-    display: grid; gap: 18px;
+  .landing .subtitle {
+    font-size: 0.95em; color: #9a8f85;
+    margin-bottom: 44px;
   }
+  .apps { display: grid; gap: 14px; }
   .app-card {
-    display: flex; align-items: center; gap: 20px;
-    background: var(--card); border: 2px solid rgba(255,255,255,0.05);
-    border-radius: 20px; padding: 25px 30px;
-    text-decoration: none; color: white;
-    transition: all 0.3s;
+    display: flex; align-items: center; gap: 18px;
+    padding: 20px 24px;
+    text-decoration: none; color: #2c2c2c;
+    background: #fff;
+    border: 1px solid #e8e2dc;
+    border-radius: 14px;
+    transition: all 0.2s;
+    text-align: left;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
   }
   .app-card:hover {
-    transform: translateY(-4px);
-    border-color: var(--purple);
-    box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+    border-color: #c9bfb4;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.07);
+    transform: translateY(-2px);
   }
-  .app-card .icon { font-size: 2.5em; }
-  .app-card .info { text-align: left; }
-  .app-card .info .name { font-weight: 800; font-size: 1.3em; }
-  .app-card .info .desc { color: #aaa; font-size: 0.95em; margin-top: 2px; }
+  .app-card .icon {
+    font-size: 2em;
+    width: 52px; height: 52px;
+    display: flex; align-items: center; justify-content: center;
+    background: #f0ebe5; border-radius: 12px;
+    flex-shrink: 0;
+  }
+  .app-card .info .name { font-weight: 600; font-size: 1.05em; color: #2c2c2c; }
+  .app-card .info .desc { color: #9a8f85; font-size: 0.88em; margin-top: 3px; }
   .logout-btn {
-    position: fixed; top: 20px; right: 20px;
-    background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12);
-    border-radius: 12px; padding: 8px 16px;
-    color: #aaa; text-decoration: none;
-    font-size: 0.85em; font-weight: 700;
-    transition: all 0.2s; z-index: 2;
+    display: inline-block; margin-top: 44px;
+    padding: 10px 30px;
+    color: #9a8f85; text-decoration: none;
+    font-size: 0.88em; font-weight: 500;
+    background: #fff;
+    border: 1px solid #e8e2dc;
+    border-radius: 10px;
+    transition: all 0.2s;
   }
-  .logout-btn:hover { color: var(--pink); border-color: var(--pink); }
+  .logout-btn:hover { color: #6b5f53; border-color: #c9bfb4; }
 </style>
 </head>
 <body>
-<div class="bg-shapes"><span></span><span></span><span></span><span></span></div>
-<a href="/logout" class="logout-btn">&#128274; Logout</a>
 <div class="landing">
   <h1>Musoyan</h1>
+  <p class="subtitle">Welcome back</p>
   <div class="apps">
     <a href="/flags" class="app-card">
       <span class="icon">&#127988;</span>
@@ -495,7 +485,15 @@ LANDING_TEMPLATE = r"""
         <div class="desc">Learn the flags of the world</div>
       </div>
     </a>
+    <a href="/tictactoe" class="app-card">
+      <span class="icon">&#10060;</span>
+      <div class="info">
+        <div class="name">Tic-Tac-Toe</div>
+        <div class="desc">Play against an unbeatable AI</div>
+      </div>
+    </a>
   </div>
+  <a href="/logout" class="logout-btn">Log out</a>
 </div>
 </body>
 </html>
@@ -508,6 +506,7 @@ def landing():
 
 
 app.register_blueprint(flags_bp)
+app.register_blueprint(tictactoe_bp)
 
 if __name__ == "__main__":
     cert = Path(__file__).parent / "cert.pem"
